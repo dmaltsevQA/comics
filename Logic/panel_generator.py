@@ -31,6 +31,7 @@ def generate_panel_image(
     fooocus_style: str = "general",
     generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,  # {character_name: image_path}
+    location_references: Optional[Dict[str, str]] = None,  # {location_name: image_path}
 ) -> Optional[str]:
     """
     Генерирует изображение для одной панели через Google Imagen 3.
@@ -49,9 +50,7 @@ def generate_panel_image(
         fooocus_style: Не используется
         generation_mode: Режим генерации (всегда "imagen")
         character_references: Словарь референсов персонажей для консистентности
-
-    Returns:
-        Путь к сохраненному файлу или None
+        location_references: Словарь референсов локаций для консистентности
     """
     # Определяем настроение и тип кадра
     if panel.mood == "neutral":
@@ -70,18 +69,29 @@ def generate_panel_image(
     images = None
 
     # Генерация через Google Imagen 3
-    if character_references and panel.characters:
-        # Фильтруем референсы только для персонажей в этой панели
-        active_refs = {
+    if (character_references or location_references) and (panel.characters or panel.location):
+        # Фильтруем референсы только для персонажей и локаций в этой панели
+        active_chars = {
             name: path for name, path in character_references.items()
             if name in panel.characters
-        }
+        } if character_references else {}
         
-        if active_refs:
-            print(f"[PANEL] Используем референсы персонажей: {list(active_refs.keys())}")
+        active_locs = {
+            name: path for name, path in location_references.items()
+            if name == panel.location or (hasattr(panel, 'location') and panel.location)
+        } if location_references else {}
+        
+        if active_chars or active_locs:
+            print(f"[PANEL] Используем референсы:")
+            if active_chars:
+                print(f"  - Персонажи: {list(active_chars.keys())}")
+            if active_locs:
+                print(f"  - Локации: {list(active_locs.keys())}")
+            
             images = api.generate_multi_character_scene(
                 prompt=prompt,
-                characters=active_refs,
+                characters=active_chars,
+                locations=active_locs if active_locs else None,
                 aspect_ratio=DEFAULT_ASPECT_RATIO.replace("*", ":"),
                 image_number=1,
             )

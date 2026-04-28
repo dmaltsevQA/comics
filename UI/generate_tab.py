@@ -119,6 +119,7 @@ def render_generate_tab(settings: dict) -> None:
                 fooocus_style="general",
                 generation_mode="imagen",
                 character_references=settings.get("character_references", {}),
+                location_references=settings.get("location_references", {}),
             )
             st.session_state["chapters"] = chapters  # Обновляем с путями к изображениям
 
@@ -181,6 +182,7 @@ def render_generate_tab(settings: dict) -> None:
                         fooocus_style="general",
                         generation_mode="imagen",
                         character_references=settings.get("character_references", {}),
+                        location_references=settings.get("location_references", {}),
                     )
                     if result:
                         st.success("✅ Перегенерировано!")

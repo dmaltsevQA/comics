@@ -243,31 +243,105 @@ class GoogleImagenAPI:
         self,
         prompt: str,
         characters: Dict[str, str],  # {name: image_path}
+        locations: Optional[Dict[str, str]] = None,  # {name: image_path}
         aspect_ratio: str = "1:1",
         image_number: int = 1,
     ) -> Optional[List[Image.Image]]:
         """
-        Генерация сцены с несколькими персонажами.
+        Генерация сцены с несколькими персонажами и локациями.
 
         Args:
             prompt: Промпт сцены
             characters: Словарь {имя_персонажа: путь_к_изображению}
+            locations: Словарь {название_локации: путь_к_изображению}
             aspect_ratio: Соотношение сторон
             image_number: Количество изображений
 
         Returns:
             Список изображений
         """
-        character_images = list(characters.values())
-        character_names = list(characters.keys())
+        content_parts = []
         
-        # Уточняем промпт с именами персонажей
-        names_list = ", ".join(character_names)
-        enhanced_prompt = f"{prompt}. Scene includes: {names_list}"
+        # Формируем уточненный промпт с именами
+        char_names = list(characters.keys())
+        loc_names = list(locations.keys()) if locations else []
         
-        return self.generate_image(
-            prompt=enhanced_prompt,
-            character_references=character_images,
-            aspect_ratio=aspect_ratio,
-            image_number=image_number,
-        )
+        entities = []
+        if char_names:
+            entities.append(f"Characters: {', '.join(char_names)}")
+        if loc_names:
+            entities.append(f"Location: {', '.join(loc_names)}")
+        
+        enhanced_prompt = prompt
+        if entities:
+            enhanced_prompt = f"{prompt}. Scene includes: {'; '.join(entities)}"
+        
+        content_parts.append({"type": "text", "text": enhanced_prompt})
+        
+        # Добавляем референсы персонажей
+        for name, img_path in characters.items():
+            if os.path.exists(img_path):
+                img_base64 = self._image_to_base64(img_path)
+                if img_base64:
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+                    })
+        
+        # Добавляем референсы локаций
+        if locations:
+            for name, img_path in locations.items():
+                if os.path.exists(img_path):
+                    img_base64 = self._image_to_base64(img_path)
+                    if img_base64:
+                        content_parts.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"},
+                        })
+        
+        payload = {
+            "model": "google/imagen-3",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content_parts
+                }
+            ],
+            "n": image_number,
+            "size": self._aspect_ratio_to_size(aspect_ratio),
+        }
+        
+        try:
+            response = self._session.post(
+                f"{self.base_url}/v1/images/generations",
+                json=payload,
+                timeout=300,
+            )
+
+            if response.status_code != 200:
+                print(f"[IMAGEN] Ошибка: {response.status_code} - {response.text}")
+                return None
+
+            result = response.json()
+            images = []
+            
+            if "data" in result:
+                for img_data in result["data"]:
+                    if "url" in img_data:
+                        img_response = requests.get(img_data["url"], timeout=30)
+                        if img_response.status_code == 200:
+                            img = Image.open(io.BytesIO(img_response.content))
+                            images.append(img)
+                    elif "b64_json" in img_data:
+                        img_bytes = base64.b64decode(img_data["b64_json"])
+                        img = Image.open(io.BytesIO(img_bytes))
+                        images.append(img)
+
+            return images if images else None
+
+        except requests.exceptions.Timeout:
+            print("[IMAGEN] Таймаут генерации")
+            return None
+        except Exception as e:
+            print(f"[IMAGEN] Ошибка генерации: {e}")
+            return None

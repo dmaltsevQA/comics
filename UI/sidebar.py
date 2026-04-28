@@ -141,47 +141,72 @@ def render_sidebar() -> dict:
 
         st.divider()
 
-        # ── Референсы персонажей ───────────────────────────────────────────────
-        st.subheader("👥 Персонажи")
-        st.caption("Загрузите изображения персонажей для консистентности")
+        # ── Референсы персонажей и локаций ───────────────────────────────────────────────
+        st.subheader("👥 Персонажи и локации")
+        st.caption("Загрузите изображения с подписями для консистентности")
         
         character_refs = {}
+        location_refs = {}
         
-        # Простой интерфейс для добавления референсов
-        num_characters = st.number_input(
-            "Количество персонажей",
-            min_value=0, max_value=10,
-            value=0, step=1,
-            key="num_characters",
+        # Выбор типа референса
+        ref_type = st.radio(
+            "Тип референса",
+            ["Персонаж", "Локация"],
+            key="ref_type_selector",
+            horizontal=True
         )
         
-        for i in range(num_characters):
+        num_references = st.number_input(
+            f"Количество {'персонажей' if ref_type == 'Персонаж' else 'локаций'}",
+            min_value=0, max_value=10,
+            value=0, step=1,
+            key=f"num_{ref_type.lower()}_refs",
+        )
+        
+        for i in range(num_references):
+            st.markdown(f"**{'Персонаж' if ref_type == 'Персонаж' else 'Локация'} #{i+1}**")
+            
             col1, col2 = st.columns([2, 1])
             with col1:
-                char_name = st.text_input(
-                    "Имя персонажа",
-                    placeholder="Например: John Doe",
-                    key=f"char_name_{i}",
+                ref_name = st.text_input(
+                    "Название/Имя",
+                    placeholder="Например: John Doe / Замок дракона",
+                    key=f"{ref_type.lower()}_name_{i}",
+                    help="Используйте это имя в промптах для идентификации"
                 )
             with col2:
-                char_file = st.file_uploader(
-                    "Фото",
+                ref_file = st.file_uploader(
+                    "Изображение",
                     type=["png", "jpg", "jpeg"],
-                    key=f"char_file_{i}",
+                    key=f"{ref_type.lower()}_file_{i}",
                 )
             
-            if char_name and char_file:
+            if ref_name and ref_file:
                 # Сохраняем временный файл
                 import os
                 from Logic.config import TEMP_DIR
-                temp_path = os.path.join(TEMP_DIR, f"char_{i}_{char_file.name}")
+                temp_path = os.path.join(TEMP_DIR, f"{ref_type.lower()}_{i}_{ref_file.name}")
                 with open(temp_path, "wb") as f:
-                    f.write(char_file.getvalue())
-                character_refs[char_name] = temp_path
+                    f.write(ref_file.getvalue())
+                
+                if ref_type == "Персонаж":
+                    character_refs[ref_name] = temp_path
+                else:
+                    location_refs[ref_name] = temp_path
+            
+            st.divider()
         
-        st.session_state["character_references"] = character_refs
-        if character_refs:
-            st.success(f"✅ Загружено {len(character_refs)} персонажей")
+        # Объединяем все референсы
+        all_references = {**character_refs, **location_refs}
+        st.session_state["character_references"] = all_references
+        st.session_state["location_references"] = location_refs
+        
+        if all_references:
+            st.success(f"✅ Загружено {len(all_references)} референсов")
+            if character_refs:
+                st.info(f"👤 Персонажи: {', '.join(character_refs.keys())}")
+            if location_refs:
+                st.info(f"🏰 Локации: {', '.join(location_refs.keys())}")
 
         st.divider()
 

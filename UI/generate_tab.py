@@ -7,7 +7,7 @@ from Logic.text_processor import get_book_stats
 from Logic.panel_generator import generate_panel_image, generate_all_images, get_panel_preview
 from Logic.comic_builder import get_comic_stats
 from Logic.text_renderer import render_panel_with_text
-from API.fooocus_api import FooocusAPI
+from API.google_imagen_api import GoogleImagenAPI
 
 
 def render_generate_tab(settings: dict) -> None:
@@ -28,7 +28,7 @@ def render_generate_tab(settings: dict) -> None:
         return
 
     if not settings.get("api_available"):
-        st.warning("⚠️ Fooocus API недоступен. Проверьте подключение в боковой панели.")
+        st.warning("⚠️ Google Imagen API недоступен. Проверьте подключение в боковой панели.")
         return
 
     # ── Статистика ────────────────────────────────────────────────────────────
@@ -113,11 +113,11 @@ def render_generate_tab(settings: dict) -> None:
                 seed=settings["seed"],
                 progress_callback=_progress,
                 stop_flag=_stop,
-                model_name=settings.get("model", "") if generation_mode == "fooocus" else settings.get("imagen_model", "google/imagen-3"),
-                lora_name=settings.get("lora", ""),
-                lora_weight=settings.get("lora_weight", 1.0),
-                fooocus_style=settings.get("fooocus_style", "Fooocus V2"),
-                generation_mode=generation_mode,
+                model_name=settings.get("imagen_model", "google/imagen-3"),
+                lora_name="",
+                lora_weight=1.0,
+                fooocus_style="general",
+                generation_mode="imagen",
                 character_references=settings.get("character_references", {}),
             )
             st.session_state["chapters"] = chapters  # Обновляем с путями к изображениям
@@ -170,17 +170,16 @@ def render_generate_tab(settings: dict) -> None:
             # Кнопка перегенерации
             if st.button("🔄 Перегенерировать", key=f"regen_{panel.index}"):
                 with st.spinner("Перегенерация..."):
-                    generation_mode = settings.get("generation_mode", "fooocus")
                     result = generate_panel_image(
                         api=settings["api"],
                         panel=panel,
                         style=settings["style"],
                         seed=settings["seed"],
-                        model_name=settings.get("model", "") if generation_mode == "fooocus" else settings.get("imagen_model", "google/imagen-3"),
-                        lora_name=settings.get("lora", ""),
-                        lora_weight=settings.get("lora_weight", 1.0),
-                        fooocus_style=settings.get("fooocus_style", "Fooocus V2"),
-                        generation_mode=generation_mode,
+                        model_name=settings.get("imagen_model", "google/imagen-3"),
+                        lora_name="",
+                        lora_weight=1.0,
+                        fooocus_style="general",
+                        generation_mode="imagen",
                         character_references=settings.get("character_references", {}),
                     )
                     if result:

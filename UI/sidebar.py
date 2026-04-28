@@ -148,6 +148,15 @@ def render_sidebar() -> dict:
         character_refs = {}
         location_refs = {}
         
+        # Опция для сцен с насилием
+        allow_moderate_violence = st.checkbox(
+            "Разрешить сцены с умеренным насилием",
+            value=False,
+            key="allow_moderate_violence",
+            help="Автоматическая оптимизация промптов для сцен с ранениями и кровью (без излишней жестокости)"
+        )
+        st.session_state["allow_moderate_violence"] = allow_moderate_violence
+        
         # Выбор типа референса
         ref_type = st.radio(
             "Тип референса",
@@ -242,4 +251,6 @@ def render_sidebar() -> dict:
             "bubble_type": bubble_type,
             "add_captions": add_captions,
             "character_references": st.session_state.get("character_references", {}),
+            "location_references": st.session_state.get("location_references", {}),
+            "allow_moderate_violence": st.session_state.get("allow_moderate_violence", False),
         }

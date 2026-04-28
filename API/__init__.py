@@ -1,4 +1,4 @@
 """API пакет — обертки для внешних API"""
-from .fooocus_api import FooocusAPI
+from .google_imagen_api import GoogleImagenAPI
 
-__all__ = ["FooocusAPI"]
+__all__ = ["GoogleImagenAPI"]

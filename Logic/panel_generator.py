@@ -1,7 +1,7 @@
 """
 Logic/panel_generator.py
 ────────────────────────
-Генерация изображений для панелей комикса через Fooocus API или Google Imagen 3.
+Генерация изображений для панелей комикса через Google Imagen 3 API.
 """
 
 from __future__ import annotations
@@ -13,13 +13,12 @@ from PIL import Image
 
 from .text_processor import Panel, Scene, Chapter
 from .prompt_builder import build_panel_prompt, build_negative_prompt, detect_mood, detect_shot_type
-from .config import OUTPUT_DIR, TEMP_DIR, DEFAULT_ASPECT_RATIO, DEFAULT_GUIDANCE_SCALE, DEFAULT_STEPS, GENERATION_MODE
-from API.fooocus_api import FooocusAPI
+from .config import OUTPUT_DIR, TEMP_DIR, DEFAULT_ASPECT_RATIO, DEFAULT_GUIDANCE_SCALE, DEFAULT_STEPS
 from API.google_imagen_api import GoogleImagenAPI
 
 
 def generate_panel_image(
-    api: FooocusAPI | GoogleImagenAPI,
+    api: GoogleImagenAPI,
     panel: Panel,
     style: str = "marvel",
     seed: int = -1,
@@ -29,26 +28,26 @@ def generate_panel_image(
     model_name: str = "",
     lora_name: str = "",
     lora_weight: float = 1.0,
-    fooocus_style: str = "Fooocus V2",
-    generation_mode: str = "fooocus",
+    fooocus_style: str = "general",
+    generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,  # {character_name: image_path}
 ) -> Optional[str]:
     """
-    Генерирует изображение для одной панели.
+    Генерирует изображение для одной панели через Google Imagen 3.
 
     Args:
-        api: API клиент (Fooocus или Google Imagen)
+        api: API клиент Google Imagen
         panel: Объект панели
         style: Стиль комикса
         seed: Seed для генерации
-        guidance_scale: CFG scale (для Fooocus)
-        steps: Количество шагов (для Fooocus)
+        guidance_scale: CFG scale (не используется в Imagen)
+        steps: Количество шагов (не используется в Imagen)
         output_dir: Директория для сохранения
         model_name: Имя модели
-        lora_name: Имя LoRA (для Fooocus)
-        lora_weight: Вес LoRA (для Fooocus)
-        fooocus_style: Стиль Fooocus
-        generation_mode: Режим генерации ("fooocus" или "imagen")
+        lora_name: Не используется
+        lora_weight: Не используется
+        fooocus_style: Не используется
+        generation_mode: Режим генерации (всегда "imagen")
         character_references: Словарь референсов персонажей для консистентности
 
     Returns:
@@ -60,63 +59,43 @@ def generate_panel_image(
 
     shot_type = detect_shot_type(panel)
 
-    # Строим промпт с учетом режима генерации
-    prompt = build_panel_prompt(panel, style, shot_type, generation_mode=generation_mode)
+    # Строим промпт
+    prompt = build_panel_prompt(panel, style, shot_type, generation_mode="imagen")
     negative = build_negative_prompt(style)
 
     print(f"[PANEL] Генерация панели #{panel.index}")
     print(f"[PANEL] Промпт: {prompt[:100]}...")
-    print(f"[PANEL] Режим: {generation_mode}")
+    print(f"[PANEL] Режим: imagen")
 
     images = None
 
-    if generation_mode == "imagen" and isinstance(api, GoogleImagenAPI):
-        # Генерация через Google Imagen 3
-        if character_references and panel.characters:
-            # Фильтруем референсы только для персонажей в этой панели
-            active_refs = {
-                name: path for name, path in character_references.items()
-                if name in panel.characters
-            }
-            
-            if active_refs:
-                print(f"[PANEL] Используем референсы персонажей: {list(active_refs.keys())}")
-                images = api.generate_multi_character_scene(
-                    prompt=prompt,
-                    characters=active_refs,
-                    aspect_ratio=DEFAULT_ASPECT_RATIO.replace("*", ":"),
-                    image_number=1,
-                )
+    # Генерация через Google Imagen 3
+    if character_references and panel.characters:
+        # Фильтруем референсы только для персонажей в этой панели
+        active_refs = {
+            name: path for name, path in character_references.items()
+            if name in panel.characters
+        }
         
-        # Если нет референсов или ошибка, генерируем без них
-        if not images:
-            images = api.generate_image(
+        if active_refs:
+            print(f"[PANEL] Используем референсы персонажей: {list(active_refs.keys())}")
+            images = api.generate_multi_character_scene(
                 prompt=prompt,
-                negative_prompt=negative,
+                characters=active_refs,
                 aspect_ratio=DEFAULT_ASPECT_RATIO.replace("*", ":"),
                 image_number=1,
-                seed=seed,
-                model_name=model_name or "google/imagen-3",
             )
     
-    elif generation_mode == "fooocus" and isinstance(api, FooocusAPI):
-        # Генерация через Fooocus (старый код)
+    # Если нет референсов или ошибка, генерируем без них
+    if not images:
         images = api.generate_image(
             prompt=prompt,
             negative_prompt=negative,
-            style=fooocus_style,
-            aspect_ratio=DEFAULT_ASPECT_RATIO,
+            aspect_ratio=DEFAULT_ASPECT_RATIO.replace("*", ":"),
             image_number=1,
             seed=seed,
-            guidance_scale=guidance_scale,
-            steps=steps,
-            model_name=model_name,
-            lora_name=lora_name,
-            lora_weight=lora_weight,
+            model_name=model_name or "google/imagen-3",
         )
-    else:
-        print(f"[PANEL] Ошибка: несоответствие режима генерации и типа API")
-        return None
 
     if images and len(images) > 0:
         # Сохраняем изображение
@@ -133,7 +112,7 @@ def generate_panel_image(
 
 
 def generate_scene_images(
-    api: FooocusAPI | GoogleImagenAPI,
+    api: GoogleImagenAPI,
     scene: Scene,
     style: str = "marvel",
     seed: int = -1,
@@ -142,8 +121,8 @@ def generate_scene_images(
     model_name: str = "",
     lora_name: str = "",
     lora_weight: float = 1.0,
-    fooocus_style: str = "Fooocus V2",
-    generation_mode: str = "fooocus",
+    fooocus_style: str = "general",
+    generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, int]:
     """
@@ -186,7 +165,7 @@ def generate_scene_images(
 
 
 def generate_chapter_images(
-    api: FooocusAPI | GoogleImagenAPI,
+    api: GoogleImagenAPI,
     chapter: Chapter,
     style: str = "marvel",
     seed: int = -1,
@@ -195,8 +174,8 @@ def generate_chapter_images(
     model_name: str = "",
     lora_name: str = "",
     lora_weight: float = 1.0,
-    fooocus_style: str = "Fooocus V2",
-    generation_mode: str = "fooocus",
+    fooocus_style: str = "general",
+    generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, int]:
     """
@@ -231,7 +210,7 @@ def generate_chapter_images(
 
 
 def generate_all_images(
-    api: FooocusAPI | GoogleImagenAPI,
+    api: GoogleImagenAPI,
     chapters: List[Chapter],
     style: str = "marvel",
     seed: int = -1,
@@ -240,25 +219,25 @@ def generate_all_images(
     model_name: str = "",
     lora_name: str = "",
     lora_weight: float = 1.0,
-    fooocus_style: str = "Fooocus V2",
-    generation_mode: str = "fooocus",
+    fooocus_style: str = "general",
+    generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, int]:
     """
-    Генерирует изображения для всех глав.
+    Генерирует изображения для всех глав через Google Imagen 3.
 
     Args:
-        api: API клиент
+        api: API клиент Google Imagen
         chapters: Список глав
         style: Стиль комикса
         seed: Seed для генерации
         progress_callback: Callback для прогресса
         stop_flag: Флаг остановки
         model_name: Имя модели
-        lora_name: Имя LoRA (для Fooocus)
-        lora_weight: Вес LoRA (для Fooocus)
-        fooocus_style: Стиль Fooocus
-        generation_mode: Режим генерации ("fooocus" или "imagen")
+        lora_name: Не используется
+        lora_weight: Не используется
+        fooocus_style: Не используется
+        generation_mode: Режим генерации (всегда "imagen")
         character_references: Словарь референсов персонажей
 
     Returns:
@@ -294,18 +273,18 @@ def generate_all_images(
 
 
 def regenerate_single_panel(
-    api: FooocusAPI | GoogleImagenAPI,
+    api: GoogleImagenAPI,
     panel: Panel,
     style: str = "marvel",
     seed: int = -1,
     model_name: str = "",
     lora_name: str = "",
     lora_weight: float = 1.0,
-    fooocus_style: str = "Fooocus V2",
-    generation_mode: str = "fooocus",
+    fooocus_style: str = "general",
+    generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,
 ) -> Optional[str]:
-    """Перегенерировать одну панель."""
+    """Перегенерировать одну панель через Google Imagen 3."""
     return generate_panel_image(
         api=api,
         panel=panel,

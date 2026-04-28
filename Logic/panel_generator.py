@@ -32,6 +32,7 @@ def generate_panel_image(
     generation_mode: str = "imagen",
     character_references: Optional[Dict[str, str]] = None,  # {character_name: image_path}
     location_references: Optional[Dict[str, str]] = None,  # {location_name: image_path}
+    allow_moderate_violence: bool = False,
 ) -> Optional[str]:
     """
     Генерирует изображение для одной панели через Google Imagen 3.
@@ -51,6 +52,7 @@ def generate_panel_image(
         generation_mode: Режим генерации (всегда "imagen")
         character_references: Словарь референсов персонажей для консистентности
         location_references: Словарь референсов локаций для консистентности
+        allow_moderate_violence: Разрешить сцены с умеренным насилием (ранения, кровь)
     """
     # Определяем настроение и тип кадра
     if panel.mood == "neutral":
@@ -94,6 +96,7 @@ def generate_panel_image(
                 locations=active_locs if active_locs else None,
                 aspect_ratio=DEFAULT_ASPECT_RATIO.replace("*", ":"),
                 image_number=1,
+                allow_moderate_violence=allow_moderate_violence,
             )
     
     # Если нет референсов или ошибка, генерируем без них

@@ -41,6 +41,7 @@ def build_panel_prompt(
     style: str = "marvel",
     shot_type: str = "medium",
     additional_details: Optional[str] = None,
+    generation_mode: str = "fooocus",
 ) -> str:
     """
     Строит промпт для генерации изображения панели.
@@ -50,9 +51,10 @@ def build_panel_prompt(
         style: Стиль комикса
         shot_type: Тип кадра
         additional_details: Дополнительные детали
+        generation_mode: Режим генерации ("fooocus" или "imagen")
 
     Returns:
-        Готовый промпт для Fooocus
+        Готовый промпт для выбранного API
     """
     parts = []
 
@@ -71,10 +73,13 @@ def build_panel_prompt(
             desc = desc[:200] + "..."
         parts.append(f"scene: {desc}")
 
-    # Персонажи
+    # Персонажи - для Imagen добавляем более детальное описание
     if panel.characters:
         chars = ", ".join(panel.characters[:3])
-        parts.append(f"characters: {chars}")
+        if generation_mode == "imagen":
+            parts.append(f"characters in scene: {chars}")
+        else:
+            parts.append(f"characters: {chars}")
 
     # Локация
     if panel.location:

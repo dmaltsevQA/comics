@@ -11,8 +11,16 @@ TEMP_DIR = os.path.join(BASE_DIR, "temp")
 for d in (OUTPUT_DIR, UPLOAD_DIR, TEMP_DIR):
     os.makedirs(d, exist_ok=True)
 
-# Fooocus API
+# Fooocus API (локальная генерация)
 FOOOCUS_BASE_URL = os.getenv("FOOOCUS_BASE_URL", "http://localhost:7865")
+
+# Google Imagen 3 API (облачная генерация через RouterAI)
+ROUTERAI_API_KEY = os.getenv("ROUTERAI_API_KEY", "")
+ROUTERAI_BASE_URL = os.getenv("ROUTERAI_BASE_URL", "https://api.routerai.ru")
+IMAGEN_MODEL_NAME = os.getenv("IMAGEN_MODEL_NAME", "google/imagen-3")
+
+# Режим генерации: "fooocus" или "imagen"
+GENERATION_MODE = os.getenv("GENERATION_MODE", "fooocus")
 
 # Параметры генерации
 DEFAULT_ASPECT_RATIO = "1024*1024"

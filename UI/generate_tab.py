@@ -87,7 +87,8 @@ def render_generate_tab(settings: dict) -> None:
         progress_bar = st.progress(0, text="Начинаем генерацию...")
         status_text = st.empty()
 
-        api: FooocusAPI = settings["api"]
+        api = settings["api"]
+        generation_mode = settings.get("generation_mode", "fooocus")
 
         def _progress(current: int, total: int, text: str):
             pct = current / total if total > 0 else 0
@@ -112,10 +113,12 @@ def render_generate_tab(settings: dict) -> None:
                 seed=settings["seed"],
                 progress_callback=_progress,
                 stop_flag=_stop,
-                model_name=settings.get("model", ""),
+                model_name=settings.get("model", "") if generation_mode == "fooocus" else settings.get("imagen_model", "google/imagen-3"),
                 lora_name=settings.get("lora", ""),
                 lora_weight=settings.get("lora_weight", 1.0),
                 fooocus_style=settings.get("fooocus_style", "Fooocus V2"),
+                generation_mode=generation_mode,
+                character_references=settings.get("character_references", {}),
             )
             st.session_state["chapters"] = chapters  # Обновляем с путями к изображениям
 
@@ -167,15 +170,18 @@ def render_generate_tab(settings: dict) -> None:
             # Кнопка перегенерации
             if st.button("🔄 Перегенерировать", key=f"regen_{panel.index}"):
                 with st.spinner("Перегенерация..."):
+                    generation_mode = settings.get("generation_mode", "fooocus")
                     result = generate_panel_image(
                         api=settings["api"],
                         panel=panel,
                         style=settings["style"],
                         seed=settings["seed"],
-                        model_name=settings.get("model", ""),
+                        model_name=settings.get("model", "") if generation_mode == "fooocus" else settings.get("imagen_model", "google/imagen-3"),
                         lora_name=settings.get("lora", ""),
                         lora_weight=settings.get("lora_weight", 1.0),
                         fooocus_style=settings.get("fooocus_style", "Fooocus V2"),
+                        generation_mode=generation_mode,
+                        character_references=settings.get("character_references", {}),
                     )
                     if result:
                         st.success("✅ Перегенерировано!")
